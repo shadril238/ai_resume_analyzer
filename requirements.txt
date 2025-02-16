@@ -42,3 +42,9 @@ urllib3==2.3.0
 vine==5.1.0
 virtualenv==20.28.0
 wcwidth==0.2.13
+
+faiss-cpu~=1.10.0
+fitz~=0.0.1.dev2
+sentence-transformers~=3.4.1
+pathlib~=1.0.1
+requests~=2.32.3
