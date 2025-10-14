@@ -10,6 +10,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from sentence_transformers import SentenceTransformer
+from ranker import ResumeRanker
 
 from .models import Resume
 from .serializers import ResumeSerializer
@@ -62,7 +63,7 @@ def bulk_upload_from_folder(request):
                 continue
 
             with open(file_path, "rb") as f:
-                resume = Resume(file=ContentFile(f.read(), name=file_name))
+                resume = Resume(name=os.path.splitext(file_name)[0], file=ContentFile(f.read(), name=file_name))
                 resume.save()
                 uploaded_count += 1
 
@@ -82,6 +83,9 @@ embedding_model = SentenceTransformer("all-MiniLM-L6-v2")  # Small & fast model
 embedding_dim = 384  # Depends on the model used
 faiss_index = faiss.IndexFlatL2(embedding_dim)
 resume_store = {}  # Dictionary to map resume IDs to file paths
+
+# Shared ranker instance for JSON ranking API
+api_ranker = ResumeRanker()
 
 
 def extract_text_from_pdf(pdf_path):
@@ -153,3 +157,37 @@ def find_candidate(request):
 class ResumeViewSet(viewsets.ModelViewSet):
     queryset = Resume.objects.all()
     serializer_class = ResumeSerializer
+
+
+@api_view(['POST'])
+def rank_folder(request):
+    """Rank resumes from a given folder_path using the lighter ranker."""
+    folder_path = request.data.get("folder_path")
+    query = request.data.get("query") or request.data.get("prompt") or ""
+    top_k = int(request.data.get("top_k", 5))
+    keywords = request.data.get("keywords", "")
+    min_score = float(request.data.get("min_score", 0.0))
+    kw_boost = float(request.data.get("keyword_boost", 0.05))
+    use_ollama = bool(request.data.get("use_ollama", False))
+    use_reranker = bool(request.data.get("use_reranker", False))
+
+    if not folder_path or not os.path.isdir(folder_path):
+        return JsonResponse({"error": "Invalid folder_path"}, status=400)
+    if not query.strip():
+        return JsonResponse({"error": "Missing query"}, status=400)
+
+    try:
+        n = api_ranker.index_folder(folder_path)
+        kw_list = [k.strip() for k in keywords.split(',') if k.strip()]
+        api_ranker.use_reranker = use_reranker
+        results = api_ranker.rank(
+            query,
+            top_k=top_k,
+            keywords=kw_list,
+            keyword_boost=kw_boost,
+            min_score=min_score,
+            use_ollama_refine=use_ollama,
+        )
+        return JsonResponse({"indexed": n, "results": results})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

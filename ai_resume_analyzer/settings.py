@@ -24,7 +24,12 @@ SECRET_KEY = "django-insecure-&ddb@446a@qf$!s=i6bpt$&f787cgku@&=zz-=4rp14#tq&iok
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Allow local/dev hosts by default
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+]
 
 # Application definition
 
@@ -70,18 +75,27 @@ TEMPLATES = [
 WSGI_APPLICATION = "ai_resume_analyzer.wsgi.application"
 
 # Database
+# Use SQLite by default for local/dev. To use Postgres, set env DJANGO_DB=postgres
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'resumedb',
-        'USER': 'shadril',
-        'PASSWORD': 'Shadril238',
-        'HOST': 'localhost',
-        'PORT': '5433',
+if os.environ.get("DJANGO_DB", "").lower() == "postgres":
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('POSTGRES_DB', 'resumedb'),
+            'USER': os.environ.get('POSTGRES_USER', 'shadril'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'Shadril238'),
+            'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+            'PORT': os.environ.get('POSTGRES_PORT', '5433'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -125,3 +139,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Configure MEDIA_URL & MEDIA_ROOT
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# Ensure media dir exists in dev
+os.makedirs(MEDIA_ROOT, exist_ok=True)

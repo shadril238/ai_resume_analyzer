@@ -22,7 +22,7 @@ kombu==5.4.2
 packaging==24.2
 pdfminer.six==20231228
 pdfplumber==0.11.5
-pillow==11.1.0
+pillow==10.4.0            # <— was 11.1.0; keep <11 for gradio 4.44.x
 pipenv==2024.4.0
 platformdirs==4.3.6
 prompt_toolkit==3.0.50
@@ -44,7 +44,12 @@ virtualenv==20.28.0
 wcwidth==0.2.13
 
 faiss-cpu~=1.10.0
-fitz~=0.0.1.dev2
+# fitz~=0.0.1.dev2      # <— remove this; it's not PyMuPDF
 sentence-transformers~=3.4.1
 pathlib~=1.0.1
 requests~=2.32.3
+gradio~=4.44.0          # works with Pillow <11
+# Optional: enable reranking with HF transformers (uncomment to use)
+transformers>=4.45.0,<5.0.0
+torch>=2.2
+docx2txt~=0.8
